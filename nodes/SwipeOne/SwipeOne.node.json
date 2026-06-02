@@ -1,0 +1,10 @@
+{
+  "node": "n8n-nodes-swipeone.swipeOne",
+  "nodeVersion": "1",
+  "codexVersion": "1.0",
+  "categories": ["Sales", "Marketing"],
+  "resources": {
+    "primaryDocumentation": [{ "url": "https://api.swipeone.com/docs" }]
+  },
+  "alias": ["SwipeOne", "swipeone", "email marketing"]
+}

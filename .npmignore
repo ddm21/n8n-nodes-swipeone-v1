@@ -1,0 +1,24 @@
+# Source files
+nodes/
+credentials/
+index.ts
+*.ts
+!dist/**
+dist/*.tsbuildinfo
+
+# Config
+tsconfig.json
+.eslintrc*
+eslint.config.mjs
+.prettierrc*
+.editorconfig
+.github/
+
+# Dev files
+node_modules/
+*.tsbuildinfo
+.gitignore
+
+# Local test harness + internal notes
+n8n-with-postgres/
+UPSTREAM-AUDIT-REPORT.md
