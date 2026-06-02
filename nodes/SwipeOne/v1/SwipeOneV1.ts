@@ -16,11 +16,15 @@ import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { apiRequest } from './transport';
 
-// Property names already shown as dedicated top-level fields in the create operation
+// Property names already shown as dedicated top-level fields in the create operation,
+// plus system-managed / server-generated properties the user must not set.
 const DEFAULT_PROPERTY_NAMES = new Set([
   'firstName',
   'lastName',
   'email',
+  'createdAt',
+  'lastActivityDate',
+  'updatedAt',
 ]);
 
 // Operators available per fieldType
@@ -320,23 +324,41 @@ export class SwipeOneV1 implements INodeType {
         const definitions = response?.data?.eventDefinitions ?? response?.data ?? [];
         const definition = definitions.find((d: { name: string }) => d.name === eventType);
         if (!definition || !definition.properties) return [];
-        return definition.properties.map((p: { name: string; label: string; fieldType: string; options?: Array<{ label: string }> }) => {
-          let description = `Type: ${p.fieldType}`;
-          if ((p.fieldType === 'select' || p.fieldType === 'multiselect') && p.options?.length) {
-            const MAX_INLINE = 5;
-            if (p.options.length <= MAX_INLINE) {
-              description += ` — Options: ${p.options.map((o) => o.label).join(', ')}`;
-            } else {
-              const preview = p.options.slice(0, 3).map((o) => o.label).join(', ');
-              description += ` — ${p.options.length} options (e.g. ${preview}, …). Use "Get Event Definitions" to see all.`;
-            }
-          }
-          return {
-            name: p.label,
-            value: p.name,
-            description,
-          };
-        });
+        return definition.properties.map((p: { name: string; label: string; fieldType: string }) => ({
+          name: p.label,
+          value: p.name,
+          // Just the type — the actual option labels now render in the Value chips
+          // picker (loadOptionsMethod: getEventPropertyValues), so no need to dump
+          // them into the description (got ugly for properties with many options).
+          description: `Type: ${p.fieldType}`,
+        }));
+      },
+      // Loads the select/multiselect option labels for the event property picked in
+      // the SAME eventProperties row (Event → Fire Event). Reads the sibling 'name'
+      // field via the relative reference '&name', and the event definition via the
+      // top-level 'type' field. Returns option LABELS as values (the API expects
+      // labels). For non-select properties returns [] so the user can switch the
+      // field to Expression and type a value.
+      async getEventPropertyValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const eventType = this.getCurrentNodeParameter('type') as string;
+        const propertyName = this.getCurrentNodeParameter('&name') as string;
+        if (!eventType || !propertyName) return [];
+        const credentials = await this.getCredentials('swipeOneApi');
+        const workspaceId = credentials.workspaceId as string;
+        const response = await apiRequest.call(
+          this,
+          'GET',
+          `/workspaces/${workspaceId}/event-definitions`,
+        );
+        const definitions = response?.data?.eventDefinitions ?? response?.data ?? [];
+        const definition = definitions.find((d: { name: string }) => d.name === eventType);
+        if (!definition?.properties) return [];
+        const prop = definition.properties.find((p: { name: string }) => p.name === propertyName);
+        if (!prop?.options?.length) return [];
+        return prop.options.map((o: { label: string; name: string }) => ({
+          name: o.label,
+          value: o.label,
+        }));
       },
       async getContactStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         const credentials = await this.getCredentials('swipeOneApi');
@@ -485,9 +507,38 @@ export class SwipeOneV1 implements INodeType {
         const plainName = selectedProperty.replace(/^customProperties\./, '');
         const prop = properties.find((p: { name: string }) => p.name === plainName);
         if (!prop?.options?.length) return [];
+        // SwipeOne's API expects the option LABEL as the value (e.g. "1 Days Before"),
+        // not the internal name — so value is set to o.label here.
         return prop.options.map((o: { label: string; name: string }) => ({
           name: o.label,
-          value: o.name,
+          value: o.label,
+        }));
+      },
+      // Loads the select/multiselect option labels for the property picked in the
+      // SAME additionalProperties row (Contact → Create or Update). Reads the sibling
+      // 'name' field via the n8n relative reference (loadOptionsDependsOn: ['&name']).
+      // Returns option LABELS as values, since the API expects labels. For non-select
+      // properties (text/number/date/...) returns [] so the user can switch the field
+      // to Expression and type a value.
+      async getContactPropertyValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        // '&name' = relative reference to the sibling 'name' field in the SAME
+        // fixedCollection row. n8n's LoadOptionsContext resolves the '&' prefix to
+        // the current row path; a plain 'name' would look up a non-existent top-level
+        // field and return undefined (showing "No data" in the UI).
+        const selectedProperty = this.getCurrentNodeParameter('&name') as string;
+        if (!selectedProperty) return [];
+        const credentials = await this.getCredentials('swipeOneApi');
+        const workspaceId = credentials.workspaceId as string;
+        const response = await apiRequest.call(
+          this, 'GET', `/workspaces/${workspaceId}/contact-properties`,
+        );
+        const properties = response?.data?.contactProperties ?? response?.data ?? [];
+        const plainName = selectedProperty.replace(/^customProperties\./, '');
+        const prop = properties.find((p: { name: string }) => p.name === plainName);
+        if (!prop?.options?.length) return [];
+        return prop.options.map((o: { label: string; name: string }) => ({
+          name: o.label,
+          value: o.label,
         }));
       },
       async getAllContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

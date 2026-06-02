@@ -3,9 +3,11 @@ dist/
 .eslintcache
 *.tsbuildinfo
 .env
+.claude
 
 # Local test harness (Docker n8n + postgres) — kept local, not shipped
 n8n-with-postgres/
+feature-specs/
 
 # Internal notes — not for public repo
 UPSTREAM-AUDIT-REPORT.md

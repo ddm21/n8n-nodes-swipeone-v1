@@ -83,11 +83,21 @@ export const description: INodeProperties[] = [
             },
           },
           {
+            // This is a value picker, not an ID picker — the standard "Names or IDs"
+            // naming / "Choose from the list…" description rules don't fit, so they're
+            // disabled here intentionally.
+            // eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
             displayName: 'Value',
             name: 'value',
-            type: 'string',
-            default: '',
-            description: 'Value for this property. For select/multiselect options, use the "Get Event Definitions" operation to see all valid values.',
+            type: 'multiOptions',
+            typeOptions: {
+              loadOptionsMethod: 'getEventPropertyValues',
+              loadOptionsDependsOn: ['type', '&name'],
+            },
+            default: [],
+            // eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+            description:
+              'Pick value(s) from the list. For a SINGLE-SELECT property, choose only ONE. For a MULTI-SELECT property, choose one or MORE. For text/number/date properties the list is empty — switch this field to Expression to type a value.',
           },
         ],
       },
@@ -103,8 +113,29 @@ export async function execute(
   const credentials = await this.getCredentials('swipeOneApi');
   const workspaceId = credentials.workspaceId as string;
 
+  // Fetch event definitions once so we can shape each property value by its field
+  // type: multiselect → always an array; everything else → scalar. Keyed by
+  // "<eventType>:<propertyName>".
+  const fieldTypeByKey: Record<string, string> = {};
+  try {
+    const defsResponse = await apiRequest.call(
+      this,
+      'GET',
+      `/workspaces/${workspaceId}/event-definitions`,
+    );
+    const definitions = defsResponse?.data?.eventDefinitions ?? defsResponse?.data ?? [];
+    for (const def of definitions as Array<{ name: string; properties?: Array<{ name: string; fieldType?: string }> }>) {
+      for (const p of def.properties ?? []) {
+        if (p.name && p.fieldType) fieldTypeByKey[`${def.name}:${p.name}`] = p.fieldType;
+      }
+    }
+  } catch {
+    // Non-fatal: without field types we fall back to length-based shaping below.
+  }
+
   for (let i = 0; i < items.length; i++) {
     try {
+      const eventType = this.getNodeParameter('type', i) as string;
       const contactIdentifier = this.getNodeParameter('contactIdentifier', i) as string;
       const contact: IDataObject = {};
       if (contactIdentifier === 'id') {
@@ -113,18 +144,37 @@ export async function execute(
         contact.email = this.getNodeParameter('contactEmail', i) as string;
       }
 
-      // Build properties object from the fixedCollection
+      // Build properties object from the fixedCollection. The Value field is
+      // multiOptions → an array of chosen labels (or a string if the user switched
+      // to Expression). Collect all values per property across rows, then shape by
+      // the event property's field type.
       const eventPropertiesRaw = this.getNodeParameter('eventProperties', i, {}) as IDataObject;
       const propertyValues = (eventPropertiesRaw.propertyValues as IDataObject[]) ?? [];
-      const properties: IDataObject = {};
+      const grouped: Record<string, string[]> = {};
       for (const prop of propertyValues) {
-        if (prop.name) {
-          properties[prop.name as string] = prop.value;
+        if (!prop.name) continue;
+        const raw = prop.value;
+        const vals = Array.isArray(raw)
+          ? (raw as string[])
+          : raw === '' || raw === undefined
+            ? []
+            : [raw as string];
+        (grouped[prop.name as string] ??= []).push(...vals);
+      }
+      const properties: IDataObject = {};
+      for (const [key, vals] of Object.entries(grouped)) {
+        const fieldType = fieldTypeByKey[`${eventType}:${key}`];
+        if (fieldType === 'multiselect') {
+          properties[key] = vals;
+        } else if (fieldType && fieldType !== 'multiselect') {
+          properties[key] = vals[0];
+        } else {
+          properties[key] = vals.length > 1 ? vals : vals[0];
         }
       }
 
       const body: IDataObject = {
-        type: this.getNodeParameter('type', i) as string,
+        type: eventType,
         contact,
       };
 

@@ -4,12 +4,27 @@ import { apiRequest, apiRequestAllItemsPages } from '../../transport';
 
 export const description: INodeProperties[] = [
   {
-    displayName: 'Contact ID',
+    displayName: 'Contact',
     name: 'contactId',
-    type: 'string',
+    type: 'resourceLocator',
     required: true,
-    default: '',
+    default: { mode: 'list', value: '' },
+    description: 'The contact whose events to fetch. Pick from the list (searchable by name/email) or pass a raw contact ID.',
     displayOptions: { show: { resource: ['event'], operation: ['getAll'] } },
+    modes: [
+      {
+        displayName: 'From List',
+        name: 'list',
+        type: 'list',
+        typeOptions: { searchListMethod: 'searchContacts', searchable: true },
+      },
+      {
+        displayName: 'By ID',
+        name: 'id',
+        type: 'string',
+        placeholder: 'e.g. 507f1f77bcf86cd799439011',
+      },
+    ],
   },
   {
     displayName: 'Return All',
@@ -38,7 +53,7 @@ export async function execute(
 
   for (let i = 0; i < items.length; i++) {
     try {
-      const contactId = this.getNodeParameter('contactId', i) as string;
+      const contactId = this.getNodeParameter('contactId', i, undefined, { extractValue: true }) as string;
       const returnAll = this.getNodeParameter('returnAll', i) as boolean;
       const qs: IDataObject = {};
 

@@ -13,6 +13,7 @@ eslint.config.mjs
 .prettierrc*
 .editorconfig
 .github/
+.claude
 
 # Dev files
 node_modules/
@@ -21,4 +22,5 @@ node_modules/
 
 # Local test harness + internal notes
 n8n-with-postgres/
+feature-specs/
 UPSTREAM-AUDIT-REPORT.md

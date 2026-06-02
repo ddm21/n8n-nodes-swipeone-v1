@@ -4,12 +4,26 @@ import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
   {
-    displayName: 'Contact ID',
+    displayName: 'Contact',
     name: 'contactId',
-    type: 'string',
+    type: 'resourceLocator',
+    default: { mode: 'list', value: '' },
     required: true,
-    default: '',
     displayOptions: { show: { resource: ['tag'], operation: ['addToContact'] } },
+    modes: [
+      {
+        displayName: 'From List',
+        name: 'list',
+        type: 'list',
+        typeOptions: { searchListMethod: 'searchContacts', searchable: true },
+      },
+      {
+        displayName: 'By ID',
+        name: 'id',
+        type: 'string',
+        placeholder: 'e.g. 507f1f77bcf86cd799439011',
+      },
+    ],
   },
   {
     displayName: 'Tags',
@@ -47,7 +61,7 @@ export async function execute(
 
   for (let i = 0; i < items.length; i++) {
     try {
-      const contactId = this.getNodeParameter('contactId', i) as string;
+      const contactId = this.getNodeParameter('contactId', i, undefined, { extractValue: true }) as string;
       const tagsRaw = this.getNodeParameter('tags', i) as IDataObject;
       const tagItems = (tagsRaw.tag as IDataObject[]) ?? [];
 
