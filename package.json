@@ -1,0 +1,60 @@
+{
+  "name": "n8n-nodes-swipeone",
+  "version": "0.2.1",
+  "description": "n8n community node for SwipeOne, the email marketing platform",
+  "homepage": "https://github.com/ddm21/n8n-nodes-swipeone-v1#readme",
+  "bugs": {
+    "url": "https://github.com/ddm21/n8n-nodes-swipeone-v1/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "swipeone",
+    "email-marketing",
+    "marketing",
+    "automation"
+  ],
+  "author": {
+    "name": "ddm21",
+    "url": "https://github.com/ddm21"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddm21/n8n-nodes-swipeone-v1.git"
+  },
+  "scripts": {
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "release": "n8n-node release",
+    "prepublishOnly": "n8n-node prerelease"
+  },
+  "files": [
+    "dist",
+    "!dist/*.tsbuildinfo"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": [
+      "dist/credentials/SwipeOneApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/SwipeOne/SwipeOne.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "*",
+    "eslint": "9.29.0",
+    "prettier": "3.8.1",
+    "release-it": "^20.2.0",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

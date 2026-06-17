@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.eslintcache
+*.tsbuildinfo
+.env
+.claude
+
+# Local test harness (Docker n8n + postgres) — kept local, not shipped
+n8n-with-postgres/
+feature-specs/
+
+# Internal notes — not for public repo
+UPSTREAM-AUDIT-REPORT.md
+NPM-AND-REPO-TRANSFER.md
+
+# Local Claude instructions — not for public repo
+CLAUDE.md
